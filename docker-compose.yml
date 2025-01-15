@@ -22,7 +22,7 @@ services:
       - ./trino-config:/etc/trino
 
   dagster:
-    image: dagster/dagster:latest
+    image: dagster/dagster:1.5.0
     ports:
       - "3000:3000"
     environment:
