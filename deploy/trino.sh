@@ -1,10 +1,8 @@
 #!/bin/bash
 
-# Set Trino version and directories
-echo "Setting up Trino..."
-TRINO_VERSION="417"
 TRINO_DIR="/home/datauser/trino"
 TRINO_TMP_DIR="/home/datauser/tmp"
+TRINO_VERSION="417"
 
 # Ensure Python exists
 if ! command -v python &>/dev/null; then
@@ -13,33 +11,37 @@ if ! command -v python &>/dev/null; then
     echo "Failed to create Python symlink. Exiting.";
     exit 1;
   }
+else
+  echo "Python is already available."
 fi
 
-# Create directories for Trino
+# Ensure required directories exist
 mkdir -p $TRINO_DIR $TRINO_TMP_DIR
 
 # Download and extract Trino
 if [ ! -d "$TRINO_DIR/bin" ]; then
   echo "Downloading Trino version $TRINO_VERSION..."
   wget https://repo1.maven.org/maven2/io/trino/trino-server/$TRINO_VERSION/trino-server-$TRINO_VERSION.tar.gz -O $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz || {
-    echo "Failed to download Trino. Exiting.";
-    exit 1;
+    echo "Failed to download Trino. Exiting."
+    exit 1
   }
   tar -xzf $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz -C $TRINO_DIR --strip-components=1 || {
-    echo "Failed to extract Trino. Exiting.";
-    exit 1;
+    echo "Failed to extract Trino. Exiting."
+    exit 1
   }
   rm -f $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz
 else
   echo "Trino is already downloaded."
 fi
 
-# Fix Python path in launcher if necessary
+# Fix Python path in launcher
 LAUNCHER_PATH="$TRINO_DIR/bin/launcher"
-if grep -q '^#!/usr/bin/env python' $LAUNCHER_PATH; then
-  echo "Fixing Python path in Trino launcher..."
-  sed -i "s|#!/usr/bin/env python|#!/home/datauser/miniconda/envs/data_platform/bin/python|" $LAUNCHER_PATH
+if ! /home/datauser/miniconda/envs/data_platform/bin/python --version &>/dev/null; then
+  sudo ln -s /home/datauser/miniconda/envs/data_platform/bin/python /usr/bin/python
 fi
+
+# Stop any running Trino instance
+$TRINO_DIR/bin/launcher stop || echo "Trino not running, continuing setup."
 
 # Create configuration files
 echo "Creating Trino configuration files..."

@@ -1,10 +1,20 @@
 #!/bin/bash
 
+MINIO_DIR="/home/datauser/minio"
+
+# Stop and remove existing MinIO container
+if docker ps -a --format '{{.Names}}' | grep -q '^minio$'; then
+  echo "Stopping and removing existing MinIO container..."
+  docker stop minio && docker rm minio || {
+    echo "Failed to remove existing MinIO container. Exiting."
+    exit 1
+  }
+fi
+
 # Ensure MinIO data directory exists
 echo "Setting up MinIO directories..."
-MINIO_DIR="/home/datauser/minio"
 sudo mkdir -p $MINIO_DIR/data
-sudo chown -R datauser:datauser $MINIO_DIR
+sudo chown -R 1000:1000 $MINIO_DIR
 
 # Pull and start MinIO container
 echo "Pulling and starting MinIO Docker container..."
@@ -15,7 +25,10 @@ docker run -d --name minio \
   -v $MINIO_DIR/data:/data \
   -e "MINIO_ROOT_USER=admin" \
   -e "MINIO_ROOT_PASSWORD=adminpassword" \
-  minio/minio server /data --console-address ":9001" || echo "Container already running."
+  minio/minio server /data --console-address ":9001" || {
+    echo "Failed to start MinIO container. Exiting."
+    exit 1
+  }
 
 # Download MinIO client
 echo "Downloading MinIO client..."
@@ -28,7 +41,7 @@ sudo mv mc /usr/local/bin/
 echo "Configuring MinIO client..."
 mc alias set myminio http://70.34.202.253:9000 admin adminpassword || { echo "Failed to configure MinIO client."; exit 1; }
 
-# Create test bucket if it doesn't exist
+# Create test bucket
 if ! mc ls myminio/test-bucket &>/dev/null; then
   echo "Creating test bucket..."
   mc mb myminio/test-bucket || { echo "Failed to create test bucket."; exit 1; }
