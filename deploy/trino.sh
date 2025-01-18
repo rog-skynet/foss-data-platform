@@ -1,20 +1,21 @@
-### Trino Setup Script: setup_trino.sh
 #!/bin/bash
 
 # Set Trino version
 echo "Setting up Trino..."
 TRINO_VERSION="417"
+TRINO_TMP_DIR="/home/datauser/tmp"
 TRINO_DIR="/home/datauser/trino"
 
-# Create directories for Trino
+# Create necessary directories
+mkdir -p $TRINO_TMP_DIR
 mkdir -p $TRINO_DIR
 
 # Download and extract Trino
 if [ ! -d "$TRINO_DIR/bin" ]; then
   echo "Downloading Trino version $TRINO_VERSION..."
-  wget https://repo1.maven.org/maven2/io/trino/trino-server/$TRINO_VERSION/trino-server-$TRINO_VERSION.tar.gz -O /tmp/trino-server-$TRINO_VERSION.tar.gz
-  tar -xzf /tmp/trino-server-$TRINO_VERSION.tar.gz -C $TRINO_DIR --strip-components=1
-  rm -f /tmp/trino-server-$TRINO_VERSION.tar.gz
+  wget https://repo1.maven.org/maven2/io/trino/trino-server/$TRINO_VERSION/trino-server-$TRINO_VERSION.tar.gz -O $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz || { echo "Failed to download Trino. Exiting."; exit 1; }
+  tar -xzf $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz -C $TRINO_DIR --strip-components=1 || { echo "Failed to extract Trino. Exiting."; exit 1; }
+  rm -f $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz
 else
   echo "Trino is already downloaded."
 fi
@@ -64,7 +65,7 @@ chmod -R 755 $TRINO_DIR
 
 # Start Trino
 echo "Starting Trino..."
-$TRINO_DIR/bin/launcher start
+$TRINO_DIR/bin/launcher start || { echo "Failed to start Trino. Check logs at $TRINO_DIR/var/log/server.log"; exit 1; }
 
 # Verify Trino installation
 if curl -s http://70.34.202.253:8080 | grep -q "Trino"; then
