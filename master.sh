@@ -12,9 +12,9 @@ for script in deploy/user.sh deploy/minio.sh deploy/trino.sh deploy/dagster.sh d
   fi
 done
 
-echo "Running user setup script as root (datauser creation)..."
-# Run the user-specific setup script as root (datauser doesn't exist yet)
-bash setup/user.sh
+echo "Running user deploy script as root (datauser creation)..."
+# Run the user-specific deploy script as root (datauser doesn't exist yet)
+bash deploy/user.sh
 
 echo "Switching to datauser for platform deployment..."
 # Switch to datauser for subsequent setup steps
