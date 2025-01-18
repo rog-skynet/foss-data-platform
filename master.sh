@@ -5,7 +5,7 @@ set -e
 
 echo "Validating required scripts..."
 # Ensure all deploy scripts exist before running
-for script in setup/setup_user.sh deploy/minio.sh deploy/trino.sh deploy/dagster.sh deploy/dbt.sh deploy/jupyterlab.sh; do
+for script in setup/user.sh deploy/minio.sh deploy/trino.sh deploy/dagster.sh deploy/dbt.sh deploy/jupyterlab.sh; do
   if [ ! -f "$script" ]; then
     echo "Error: Script $script not found. Exiting."
     exit 1
