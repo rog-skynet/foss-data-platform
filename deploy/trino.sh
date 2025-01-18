@@ -1,23 +1,44 @@
 #!/bin/bash
 
-# Set Trino version
+# Set Trino version and directories
 echo "Setting up Trino..."
 TRINO_VERSION="417"
-TRINO_TMP_DIR="/home/datauser/tmp"
 TRINO_DIR="/home/datauser/trino"
+TRINO_TMP_DIR="/home/datauser/tmp"
 
-# Create necessary directories
-mkdir -p $TRINO_TMP_DIR
-mkdir -p $TRINO_DIR
+# Ensure Python exists
+if ! command -v python &>/dev/null; then
+  echo "Python not found. Creating symbolic link..."
+  sudo ln -sf /home/datauser/miniconda/envs/data_platform/bin/python /usr/bin/python || {
+    echo "Failed to create Python symlink. Exiting.";
+    exit 1;
+  }
+fi
+
+# Create directories for Trino
+mkdir -p $TRINO_DIR $TRINO_TMP_DIR
 
 # Download and extract Trino
 if [ ! -d "$TRINO_DIR/bin" ]; then
   echo "Downloading Trino version $TRINO_VERSION..."
-  wget https://repo1.maven.org/maven2/io/trino/trino-server/$TRINO_VERSION/trino-server-$TRINO_VERSION.tar.gz -O $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz || { echo "Failed to download Trino. Exiting."; exit 1; }
-  tar -xzf $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz -C $TRINO_DIR --strip-components=1 || { echo "Failed to extract Trino. Exiting."; exit 1; }
+  wget https://repo1.maven.org/maven2/io/trino/trino-server/$TRINO_VERSION/trino-server-$TRINO_VERSION.tar.gz -O $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz || {
+    echo "Failed to download Trino. Exiting.";
+    exit 1;
+  }
+  tar -xzf $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz -C $TRINO_DIR --strip-components=1 || {
+    echo "Failed to extract Trino. Exiting.";
+    exit 1;
+  }
   rm -f $TRINO_TMP_DIR/trino-server-$TRINO_VERSION.tar.gz
 else
   echo "Trino is already downloaded."
+fi
+
+# Fix Python path in launcher if necessary
+LAUNCHER_PATH="$TRINO_DIR/bin/launcher"
+if grep -q '^#!/usr/bin/env python' $LAUNCHER_PATH; then
+  echo "Fixing Python path in Trino launcher..."
+  sed -i "s|#!/usr/bin/env python|#!/home/datauser/miniconda/envs/data_platform/bin/python|" $LAUNCHER_PATH
 fi
 
 # Create configuration files
@@ -65,13 +86,17 @@ chmod -R 755 $TRINO_DIR
 
 # Start Trino
 echo "Starting Trino..."
-$TRINO_DIR/bin/launcher start || { echo "Failed to start Trino. Check logs at $TRINO_DIR/var/log/server.log"; exit 1; }
+$TRINO_DIR/bin/launcher start || {
+  echo "Failed to start Trino. Check logs at $TRINO_DIR/var/log/server.log.";
+  exit 1;
+}
 
 # Verify Trino installation
 if curl -s http://70.34.202.253:8080 | grep -q "Trino"; then
   echo "Trino is running! Access it at http://70.34.202.253:8080"
 else
-  echo "Trino failed to start. Check the logs in $TRINO_DIR/var/log/server.log"
+  echo "Trino failed to start. Check logs at $TRINO_DIR/var/log/server.log"
+  exit 1
 fi
 
 echo "Trino setup complete!"
