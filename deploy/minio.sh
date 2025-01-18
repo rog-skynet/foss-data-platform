@@ -3,11 +3,13 @@
 # Ensure MinIO data directory exists
 echo "Setting up MinIO directories..."
 mkdir -p /home/datauser/minio/data
-chmod -R 1000:1000 /home/datauser/minio
+chown -R 1000:1000 /home/datauser/minio
+
+# Remove existing container if necessary
+docker rm -f minio || echo "No existing MinIO container to remove."
 
 # Pull and start MinIO container
-echo "Pulling and starting MinIO Docker container..."
-docker pull minio/minio || { echo "Failed to pull MinIO image. Exiting."; exit 1; }
+docker pull minio/minio
 docker run -d --name minio \
   -p 9000:9000 \
   -p 9001:9001 \
@@ -16,14 +18,12 @@ docker run -d --name minio \
   -e "MINIO_ROOT_PASSWORD=adminpassword" \
   minio/minio server /data --console-address ":9001"
 
-# Download MinIO client
-echo "Downloading MinIO client..."
+# Download and install MinIO client
 curl -O https://dl.min.io/client/mc/release/linux-amd64/mc || { echo "Failed to download MinIO client. Exiting."; exit 1; }
 chmod +x mc
-mv mc /usr/local/bin/ || { echo "Failed to move MinIO client. Exiting."; exit 1; }
+mv mc /usr/local/bin/mc || { echo "Failed to move MinIO client. Exiting."; exit 1; }
 
 # Configure MinIO client
-echo "Configuring MinIO client..."
 mc alias set myminio http://70.34.202.253:9000 admin adminpassword || { echo "Failed to configure MinIO client. Exiting."; exit 1; }
 
 # Create test bucket if it doesn't exist
